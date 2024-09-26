@@ -1,0 +1,588 @@
+upload.html   <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Video</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #1c1c1c;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 600px;
+            background-color: #2e2e2e;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .slider-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .slider {
+            width: 100%;
+        }
+        .button {
+            padding: 10px 20px;
+            background-color: #ff6600;
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Upload Video</h1>
+        <form class="upload-form" id="upload-form" enctype="multipart/form-data">
+            <input type="file" name="file" id="file" accept="video/*" class="form-control">
+            <div class="slider-container mt-3">
+                <span class="slider-label">Confidence Threshold: </span>
+                <input type="range" id="confidence-slider" class="slider" min="0.1" max="0.9" step="0.1" value="0.5">
+                <span id="confidence-value">0.5</span>
+            </div>
+            <button type="submit" class="button btn btn-primary mt-3">Upload Video</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('confidence-slider').addEventListener('input', function () {
+            document.getElementById('confidence-value').textContent = this.value;
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('file');
+            const confidenceValue = document.getElementById('confidence-slider').value;
+            if (!fileInput.files.length) return;
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('confidence', confidenceValue);
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            if (result.message === "Processing started") {
+                window.location.href = "/tracking";
+            }
+        });
+    </script>
+</body>
+</html>
+tracking.html    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Tracking</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #1c1c1c;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 1200px;
+            background-color: #2e2e2e;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        #video-frame {
+            width: 100%;
+            max-width: 600px;
+            border: 1px solid #ddd;
+            margin-top: 20px;
+        }
+        .button {
+            padding: 10px 20px;
+            background-color: #ff6600;
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Tracking</h1>
+        <img id="video-frame" class="img-fluid img-thumbnail" src="">
+        <p id="estimated-time"></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        socket.on('frame', function (data) {
+            const videoFrame = document.getElementById('video-frame');
+            videoFrame.src = 'data:image/png;base64,' + data.frame;
+        });
+
+        socket.on('estimated_time', function (data) {
+            const estimatedTime = document.getElementById('estimated-time');
+            estimatedTime.textContent = Estimated time remaining: ${data.time_remaining.toFixed(2)} seconds;
+        });
+
+        socket.on('result', function (result) {
+            localStorage.setItem('videoResult', JSON.stringify(result));
+            window.location.href = "/result";
+        });
+    </script>
+</body>
+</html>
+result.html    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #1c1c1c;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 1200px;
+            background-color: #2e2e2e;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .chart-container {
+            margin-bottom: 30px;
+        }
+        .table-container {
+            margin-bottom: 30px;
+        }
+        .segmented-images {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .segmented-images img {
+            width: 100px;
+            height: 100px;
+            margin: 10px;
+        }
+        .button {
+            padding: 10px 20px;
+            background-color: #ff6600;
+            border: none;
+            color: white;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Results</h1>
+        <div class="row chart-container">
+            <div class="col-12">
+                <canvas id="object-chart"></canvas>
+            </div>
+        </div>
+        <div class="row table-container">
+            <div class="col-12">
+                <table class="table table-dark table-striped">
+                    <tr>
+                        <th>Total Frames</th><td id="total-frames"></td>
+                    </tr>
+                    <tr>
+                        <th>FPS</th><td id="fps"></td>
+                    </tr>
+                    <tr>
+                        <th>Duration (seconds)</th><td id="duration"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="row segmented-images" id="segmented-images"></div>
+        <button id="restart-button" class="button">Restart</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script>
+        document.getElementById('restart-button').addEventListener('click', function () {
+            window.location.href = "/";
+        });
+
+        const result = JSON.parse(localStorage.getItem('videoResult'));
+        if (result) {
+            const labels = Object.keys(result.object_counts);
+            const data = Object.values(result.object_counts);
+            const ctx = document.getElementById('object-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Object Count',
+                        data: data,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('total-frames').textContent = result.total_frames;
+            document.getElementById('fps').textContent = result.fps;
+            document.getElementById('duration').textContent = (result.total_frames / result.fps).toFixed(2);
+
+            const segmentedImagesDiv = document.getElementById('segmented-images');
+            segmentedImagesDiv.innerHTML = '';
+            for (const [object, image] of Object.entries(result.segmented_images)) {
+                const img = document.createElement('img');
+                img.src = 'data:image/png;base64,' + image;
+                img.alt = object;
+                img.className = 'img-thumbnail';
+                segmentedImagesDiv.appendChild(img);
+            }
+
+            // Add tooltip for segmented images
+            $('[data-toggle="tooltip"]').tooltip();
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
+app.py      from flask import Flask, request, render_template, jsonify
+from flask_socketio import SocketIO
+import os
+from werkzeug.utils import secure_filename
+from video_processor import process_video, process_cancelled
+import logging
+import threading
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+socketio = SocketIO(app)
+
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
+
+current_processing_thread = None
+
+@app.route('/')
+def index():
+    return render_template('upload.html')
+
+@app.route('/tracking')
+def tracking():
+    return render_template('tracking.html')
+
+@app.route('/result')
+def result():
+    return render_template('result.html')
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    global current_processing_thread
+
+    try:
+        if 'file' not in request.files or 'confidence' not in request.form:
+            return "No file part or confidence threshold", 400
+        file = request.files['file']
+        confidence_threshold = float(request.form['confidence'])
+        if file.filename == '':
+            return "No selected file", 400
+        if file:
+            if current_processing_thread and current_processing_thread.is_alive():
+                process_cancelled.set()
+
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            current_processing_thread = threading.Thread(target=process_video_with_progress, args=(filepath, confidence_threshold))
+            current_processing_thread.start()
+            return jsonify({"message": "Processing started"}), 202
+    except Exception as e:
+        logging.error("Error during file upload: %s", e)
+        return "An error occurred during file upload.", 500
+
+def process_video_with_progress(filepath, confidence_threshold):
+    try:
+        result = process_video(filepath, socketio, confidence_threshold)
+        result['total_frames'] = result.get('total_frames')
+        result['fps'] = result.get('fps')
+        result['duration'] = result.get('duration')
+        socketio.emit('result', result)
+    except Exception as e:
+        logging.error("Error during video processing: %s", e)
+        socketio.emit('result', {"error": "An error occurred during video processing."})
+
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
+video processor.py    import cv2
+import base64
+import numpy as np
+from io import BytesIO
+from PIL import Image
+from ultralytics import YOLO
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections import defaultdict
+from tracker import Tracker
+import time
+import threading
+
+# Load YOLOv8 model
+model = YOLO('yolov8x.pt')
+
+# Class names from COCO dataset
+COCO_INSTANCE_CATEGORY_NAMES = model.names
+
+# Thread control flag
+process_cancelled = threading.Event()
+
+def numpy_to_base64(image):
+    pil_image = Image.fromarray(image)
+    buffer = BytesIO()
+    pil_image.save(buffer, format="PNG")
+    base64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return base64_str
+
+def get_confidence_threshold(current_time, user_threshold=0.5):
+    return user_threshold
+
+def draw_boxes_and_labels(frame, results, tracker, confidence_threshold):
+    for obj in results.boxes:
+        cls = int(obj.cls[0])
+        label = COCO_INSTANCE_CATEGORY_NAMES[cls]
+        confidence = obj.conf[0]
+        if confidence > confidence_threshold:
+            x1, y1, x2, y2 = map(int, obj.xyxy[0])
+            object_id = tracker.update((x1, y1, x2, y2), label)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            text = f"{label} {object_id}"
+            cv2.putText(frame, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+    return frame
+
+def process_frame(frame, frame_number, fps, tracker, confidence_threshold):
+    results = model(frame)[0]
+    frame_data = {
+        "object_counts": defaultdict(int),
+        "segmented_images": defaultdict(list),
+        "unique_labels": [],
+    }
+
+    annotated_frame = draw_boxes_and_labels(frame.copy(), results, tracker, confidence_threshold)
+    frame_data["frame"] = numpy_to_base64(annotated_frame)
+
+    for obj in results.boxes:
+        cls = int(obj.cls[0])
+        label = COCO_INSTANCE_CATEGORY_NAMES[cls]
+        confidence = obj.conf[0]
+        if confidence > confidence_threshold:
+            x1, y1, x2, y2 = map(int, obj.xyxy[0])
+            object_id = tracker.update((x1, y1, x2, y2), label)
+            if object_id not in frame_data["unique_labels"]:
+                frame_data["unique_labels"].append(object_id)
+                frame_data["object_counts"][label] += 1
+
+                mask = cv2.cvtColor(frame[y1:y2, x1:x2], cv2.COLOR_BGR2RGB)
+                frame_data["segmented_images"][label].append(numpy_to_base64(mask))
+
+    return frame_data
+
+def process_video(filepath, socketio, confidence_threshold):
+    global process_cancelled
+    process_cancelled.clear()
+
+    cap = cv2.VideoCapture(filepath)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration = total_frames / fps
+
+    if duration >= 40 and duration <= 60:
+        step = fps * 4
+    elif duration >= 30 and duration <= 39:
+        step = fps * 3
+    else:
+        step = fps * 2
+
+    object_counts = defaultdict(int)
+    segmented_images = defaultdict(list)
+    original_object_counts = defaultdict(int)
+
+    tracker = Tracker()
+
+    frame_number = 0
+    start_time = time.time()
+
+    with ThreadPoolExecutor() as executor:
+        futures = []
+        while frame_number < total_frames:
+            if process_cancelled.is_set():
+                cap.release()
+                return {"error": "Video processing cancelled"}
+
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+            ret, frame = cap.read()
+            if not ret:
+                break
+            futures.append(executor.submit(process_frame, frame, frame_number, fps, tracker, confidence_threshold))
+            frame_number += step
+
+            frame_data = futures[-1].result()
+            socketio.emit('frame', frame_data)
+
+            elapsed_time = time.time() - start_time
+            processed_frames = len(futures)
+            remaining_frames = total_frames - frame_number
+            estimated_time_remaining = ((elapsed_time / processed_frames) * remaining_frames) / 100
+            socketio.emit('estimated_time', {'time_remaining': estimated_time_remaining})
+
+        for future in as_completed(futures):
+            frame_data = future.result()
+            for label, count in frame_data["object_counts"].items():
+                object_counts[label] += count
+                original_object_counts[label] += 1
+
+            for label, images in frame_data["segmented_images"].items():
+                segmented_images[label].extend(images)
+
+    cap.release()
+
+    sorted_objects = sorted(original_object_counts.items(), key=lambda item: item[1], reverse=True)
+    top_3_objects = sorted_objects[:3]
+
+    return {
+        'object_counts': dict(top_3_objects),
+        'segmented_images': {label: images[0] for label, images in segmented_images.items() if label in dict(top_3_objects)},
+        'total_frames': total_frames,
+        'fps': fps,
+        'duration': duration
+    }
+tracker.py     class Tracker:
+    def __init__(self):
+        self.next_id = 0
+        self.objects = {}
+
+    def update(self, bbox, label):
+        for object_id, (old_bbox, old_label) in self.objects.items():
+            if self._is_same_object(bbox, old_bbox) and label == old_label:
+                self.objects[object_id] = (bbox, label)
+                return object_id
+        self.next_id += 1
+        self.objects[self.next_id] = (bbox, label)
+        return self.next_id
+
+    def _is_same_object(self, bbox1, bbox2):
+        x1, y1, x2, y2 = bbox1
+        xx1, yy1, xx2, yy2 = bbox2
+        iou = self._iou(bbox1, bbox2)
+        return iou > 0.5
+
+    def _iou(self, bbox1, bbox2):
+        x1, y1, x2, y2 = bbox1
+        xx1, yy1, xx2, yy2 = bbox2
+        ix1 = max(x1, xx1)
+        iy1 = max(y1, yy1)
+        ix2 = min(x2, xx2)
+        iy2 = min(y2, yy2)
+        iw = max(ix2 - ix1, 0)
+        ih = max(iy2 - iy1, 0)
+        intersection = iw * ih
+        area1 = (x2 - x1) * (y2 - y1)
+        area2 = (xx2 - xx1) * (yy2 - yy1)
+        union = area1 + area2 - intersection
+        return intersection / union
+test_video_processor.py    import unittest
+import cv2
+import numpy as np
+from video_processor import process_frame, numpy_to_base64, get_confidence_threshold, process_video, draw_boxes_and_labels
+from tracker import Tracker
+
+class TestVideoProcessor(unittest.TestCase):
+
+    def setUp(self):
+        self.frame = np.random.randint(0, 255, (720, 1280, 3), dtype=np.uint8)
+        self.tracker = Tracker()
+        self.fps = 30
+        self.confidence_threshold = 0.5
+
+    def test_numpy_to_base64(self):
+        base64_str = numpy_to_base64(self.frame)
+        self.assertTrue(isinstance(base64_str, str))
+
+    def test_get_confidence_threshold(self):
+        self.assertEqual(get_confidence_threshold(0, 0.5), 0.5)
+        self.assertEqual(get_confidence_threshold(10, 0.7), 0.7)
+
+    def test_draw_boxes_and_labels(self):
+        # Mocking YOLO result
+        results = type('', (), {})()  # create a mock object
+        results.boxes = [
+            type('', (), {'cls': [0], 'conf': [0.9], 'xyxy': [[100, 100, 200, 200]]})(),
+            type('', (), {'cls': [1], 'conf': [0.6], 'xyxy': [[300, 300, 400, 400]]})()
+        ]
+        annotated_frame = draw_boxes_and_labels(self.frame, results, self.tracker, self.confidence_threshold)
+        self.assertIsNotNone(annotated_frame)
+
+    def test_process_frame(self):
+        frame_data = process_frame(self.frame, 0, self.fps, self.tracker, self.confidence_threshold)
+        self.assertIn("frame", frame_data)
+        self.assertIn("object_counts", frame_data)
+        self.assertIn("segmented_images", frame_data)
+        self.assertIn("unique_labels", frame_data)
+
+    def test_process_video(self):
+        # Create a temporary video file for testing
+        filepath = 'test_video.mp4'
+        cap = cv2.VideoCapture(filepath)
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        result = process_video(filepath, None, self.confidence_threshold)
+        self.assertIn("object_counts", result)
+        self.assertIn("segmented_images", result)
+        self.assertIn("total_frames", result)
+        self.assertIn("fps", result)
+        self.assertEqual(result["total_frames"], total_frames)
+        self.assertEqual(result["fps"], fps)
+
+if __name__ == '__main__':
+    unittest.main()
